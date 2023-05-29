@@ -8,61 +8,101 @@ class ApiService {
     final response = await BaseNetwork.getList('matches');
     return response.map((json) => MatchesModel.fromJson(json)).toList();
   }
-
-  Future<MatchesModel?> getMatchDetail(String matchId) async {
-    final response = await BaseNetwork.get('matches/$matchId');
-    return response.isNotEmpty ? MatchesModel.fromJson(response) : null;
-  }
 }
 
-class listMatches extends StatefulWidget {
-  const listMatches({Key? key}) : super(key: key);
-
-  @override
-  _listMatchesState createState() => _listMatchesState();
-}
-
-class _listMatchesState extends State<listMatches> {
-  List<MatchesModel> matches = [];
-
-  @override
-  void initState() {
-    super.initState();
-    _fetchMatches();
-  }
-
-  Future<void> _fetchMatches() async {
-    ApiService apiService = ApiService();
-    List<MatchesModel> fetchedMatches = await apiService.getMatches();
-    //List<MatchesModel> fetchedMatches = await apiService.getMatchesDetail();
-
-    setState(() {
-      matches = fetchedMatches;
-    });
-  }
+class listMatches extends StatelessWidget {
+  final ApiService apiService = ApiService();
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Matches List'),
+        title: const Text('World Cup 2022'),
       ),
-      body: ListView.builder(
-        itemCount: matches.length,
-        itemBuilder: (context, index) {
-          MatchesModel match = matches[index];
-          return ListTile(
-            title: Text('${match.homeTeam?.name}' ' vs ' '${match.awayTeam?.name}'),
-            subtitle: Text('${match.homeTeam?.goals}' ' - ' '${match.awayTeam?.goals}'),
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => DetailMatches(match: match),
-                ),
-              );
-            },
-          );
+      body: FutureBuilder(
+        future: apiService.getMatches(),
+        builder: (context, AsyncSnapshot<List<MatchesModel>> snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(
+              child: CircularProgressIndicator(),
+            );
+          } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
+            return const Center(
+              child: Text("There's no data"),
+            );
+          } else {
+            List<MatchesModel> matches = snapshot.data!;
+            return ListView.builder(
+              itemCount: matches.length,
+              itemBuilder: (context, index) {
+                MatchesModel match = matches[index];
+                return GestureDetector(
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => DetailMatches(id: match.id!),
+                      ),
+                    );
+                  },
+                  child: Card(
+                    child: Container(
+                      padding: const EdgeInsets.all(10),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Column(
+                            children: [
+                              Container(
+                                width: MediaQuery.of(context).size.width / 4,
+                                child: Image.network(
+                                  'https://flagcdn.com/256x192/${match.homeTeam!.country!.substring(0, 2).toLowerCase()}.png',
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (context, error, stackTrace) =>
+                                  const Icon(Icons.error),
+                                ),
+                              ),
+                              Text('${match.homeTeam?.name!}',
+                                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold,),
+                              ),
+                            ],
+                          ),
+                          Row(
+                            children: [
+                              Text('${match.homeTeam?.goals!}',
+                                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold,),),
+                              const SizedBox(width: 5),
+                              const Text(" - ",
+                                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold,),),
+                              const SizedBox(width: 5),
+                              Text('${match.awayTeam?.goals!}',
+                                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold,),),
+                            ],
+                          ),
+                          Column(
+                            children: [
+                              Container(
+                                width: MediaQuery.of(context).size.width / 4,
+                                child: Image.network(
+                                  'https://flagcdn.com/256x192/${match.awayTeam!.country!.substring(0, 2).toLowerCase()}.png',
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (context, error, stackTrace) =>
+                                  const Icon(Icons.error),
+                                ),
+                              ),
+                              Text('${match.awayTeam?.name!}',
+                                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold,),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                );
+              },
+            );
+          }
         },
       ),
     );
